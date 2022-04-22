@@ -1,7 +1,7 @@
 # Safer custody with CTV vaults
 
 This repository demonstrates an implementation of simple, "single-hop" vaults
-using the proposed `OP_CHECKTEMPLATEVERIFY` opcode. 
+using the proposed `OP_CHECKTEMPLATEVERIFY` opcode.
 
 OP_CTV allows the vault strategy to be used without the need to maintain critical
 presigned transaction data for the lifetime of the vault, as in the case of earlier
@@ -23,7 +23,7 @@ flowchart TD
 ### Vault basics
 
 *Vaulting* is a technique for putting constraints around how bitcoins can be spent.
-The constraints are designed in such a way to limit the threat of failure 
+The constraints are designed in such a way to limit the threat of failure
 (due to key loss or attempted confiscation) during the custody process. Vaults provide
 safety improvements that are significant to both individuals performing self-custody
 and institutions securing large amounts of bitcoin on behalf of their customers.
@@ -33,14 +33,14 @@ are allowed to travel, which lets you design the flow of funds so that you have
 a chance to intervene in a known way if something unexpected
 happens.
 
-For example, in the basic "single-hop" vault structure implemented here, once a 
+For example, in the basic "single-hop" vault structure implemented here, once a
 user vaults their coins, they can either unvault the balance to a key designated
 as the "cold" wallet immediately, or they can begin the unvault process and, after a
 block delay configurable by the user, spend the coins to a key designated as the
 "hot" wallet.
 
 This allows the user to intervene if they see that an unvault process
-has been started unexpectedly: if an attacker Mallory gains control of the user Alice's hot wallet and wants to 
+has been started unexpectedly: if an attacker Mallory gains control of the user Alice's hot wallet and wants to
 steal the vaulted coins, Mallory has to broadcast the unvault transaction. If Alice
 is watching the mempool/chain, she will see that the unvault transaction has been
 unexpectedly broadcast, and she can immediately sweep the balance to her cold wallet,
@@ -54,14 +54,14 @@ vendor. Hardware vendor A could serve as the hot wallet, and some multisig combi
 of vendors B and C could serve the more secure but less convenient "cold" role.
 
 
-### Vault complexity 
+### Vault complexity
 
 Vaults can either be *limited* or *recursive*. In a recursive vault, the vault can
 feed back into itself, potentially allowing the coins to remain in the vault after
 an arbitrary number of steps or partial unvaultings.
 
-The vault pattern implemented here is "limited" - it entails a single decision point, and atomically 
-unvaults the entire value. Despite being limited, this still provides high utility 
+The vault pattern implemented here is "limited" - it entails a single decision point, and atomically
+unvaults the entire value. Despite being limited, this still provides high utility
 for users. In fact, its simplicity may make it preferable to more complicated schemes.
 
 ## Demo
@@ -76,8 +76,8 @@ $ cd simple-ctv-vault
 $ pip install -r requirements.txt
 
 # build this bitcoin branch
-#  https://github.com/JeremyRubin/bitcoin/tree/checktemplateverify-rebase-4-15-21
-$ bitcoind -regtest -txindex=1 &
+#  https://github.com/JeremyRubin/bitcoin/tree/checktemplateverify-signet-23.0-alpha
+$ bitcoind -signet -signetchallenge=512102946e8ba8eca597194e7ed90377d9bbebc5d17a9609ab3e35e706612ee882759351ae -signetseednode=50.18.75.225 -txindex=1 &
 ```
 
 Okay, we're ready to go.
@@ -85,14 +85,15 @@ Okay, we're ready to go.
 ### Creating a vault
 
 ```sh
-$ TXID=$(./main.py vault)
+$ ORIGINAL_COIN=$(./main.py vault)
 ```
 
 ![image](https://user-images.githubusercontent.com/73197/156897173-c8095fc6-ce39-47cf-85d7-3ac0f86ca2c8.png)
 
 
-At this point, we've generated a coin on regtest and have spent it into a new vault.
-`$TXID` corresponds to the transaction ID of the coin we spent into the vault,
+At this point, we've generated a coin on signet and have spent it into a new vault.
+`$ORIGINAL_COIN` corresponds to the transaction ID + output number of the coin we
+spent into the vault,
 which is the only piece of information we need to reconstruct the vault plan and
 resume operations.
 
@@ -111,20 +112,20 @@ When we create the vault, we encumber the coin with a `scriptPubKey` that looks 
 ```python
 [unvault_ctv_hash, OP_CHECKTEMPLATEVERIFY]
 ```
-where the first item is a hash of the tree of template transactions (basically, the 
-tree illustrated above). 
+where the first item is a hash of the tree of template transactions (basically, the
+tree illustrated above).
 
 #### Why CTV?
 
 With today's consensus rules, the enforced flow of a vault is only possible if we
 presign `tocold_tx` and `tohot_tx`, hang onto them, and then destroy the key. This
 locks the spend path of the coins into the two prewritten transactions. But it saddles
-us with the operational burden of persisting that critical data indefinitely. 
+us with the operational burden of persisting that critical data indefinitely.
 
 With large numbers of vaults, ensuring this durability becomes a challenge. And for
 small-scale users, the data liability is yet another failure point during self-custody.
 
-Key deletion during vault creation is also 
+Key deletion during vault creation is also
 - hard to prove to auditors, and
 - hard to prove to yourself.
 
@@ -178,13 +179,13 @@ We can monitor for such an event and respond by sweeping our keys to the cold wa
 ### Why does `tocold` make use of another CTV?
 
 You'll notice that the hot-path requires signing with the hot private key to claim the funds. Because we
-want to be able to respond immediately, and not have to dig out our cold private keys, we use an 
+want to be able to respond immediately, and not have to dig out our cold private keys, we use an
 additional `OP_CTV` to encumber the "swept" coins for spending by only the cold wallet key.
 
 
 ### Spending to hot
 
-Otherwise, if we've intentionally unvaulted, we wait for the timeout to elapse 
+Otherwise, if we've intentionally unvaulted, we wait for the timeout to elapse
 (`./main.py generate-blocks 10`), and then spend our funds with the hot wallet.
 
 ![image](https://user-images.githubusercontent.com/73197/156934212-268bb2f8-841b-4247-ad28-49bdf365e410.png)
@@ -232,15 +233,15 @@ keys are lost and the fee market has gone well beyond the predetermined fee rate
 unvault transaction, the coins basically become unredeemable without unearthing the
 cold storage keys for a CPFP bump.
 
-Note that this is not an inherent risk to vaults per se, but the specific method of 
+Note that this is not an inherent risk to vaults per se, but the specific method of
 using anchor outpoints for long-term vaults.
 
 ### Transaction sponsors
 
-This points to the tension between covenants and fee management. As I noted in 
-a [mailinglist post](https://lists.linuxfoundation.org/pipermail/bitcoin-dev/2022-February/019879.html), a 
+This points to the tension between covenants and fee management. As I noted in
+a [mailinglist post](https://lists.linuxfoundation.org/pipermail/bitcoin-dev/2022-February/019879.html), a
 fee management technique that doesn't require structural anticipation and chain-waste
-like CPFP via anchor outputs would be most welcome. 
+like CPFP via anchor outputs would be most welcome.
 [Transaction sponsors](https://lists.linuxfoundation.org/pipermail/bitcoin-dev/2020-September/018168.html)
 is an interesting approach.
 
