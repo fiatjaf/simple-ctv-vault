@@ -88,10 +88,9 @@ Okay, we're ready to go.
 $ ORIGINAL_COIN=$(./main.py vault)
 ```
 
-![image](https://user-images.githubusercontent.com/73197/156897173-c8095fc6-ce39-47cf-85d7-3ac0f86ca2c8.png)
+![vault](https://user-images.githubusercontent.com/1653275/164860683-613fa753-3795-421e-abad-14cff58e95a3.png)
 
-
-At this point, we've generated a coin on signet and have spent it into a new vault.
+At this point, we've used a coin you had on signet and have spent it into a new vault.
 `$ORIGINAL_COIN` corresponds to the transaction ID + output number of the coin we
 spent into the vault,
 which is the only piece of information we need to reconstruct the vault plan and
@@ -139,8 +138,7 @@ about.
 
 ### Unvaulting
 
-![image](https://user-images.githubusercontent.com/73197/156897769-45ee85cc-e626-4b7a-9bd4-df471b1b9026.png)
-
+![unvault](https://user-images.githubusercontent.com/1653275/164860861-6eb9cca0-f072-45af-9cf9-faaecaa5f7bb.png)
 
 When we initiate an unvault, we broadcast a transaction that satisfies the `OP_CTV`
 script above; meaning that the transaction we broadcast has to CTV-hash to the value
@@ -170,11 +168,11 @@ here.
 This unvault step is critical because it allows us to detect unexpected behavior. If an attacker
 had stolen our hot wallet keys, their only choice to succeed in the theft is to trigger an unvault.
 
-![image](https://user-images.githubusercontent.com/73197/156897788-d2f96a48-ac92-4038-bf59-8d3fbf355685.png)
+![alert-on-unvault](https://user-images.githubusercontent.com/1653275/164861009-7b40e170-f8e5-449b-9113-e7b64be70dc4.png)
 
 We can monitor for such an event and respond by sweeping our keys to the cold wallet.
 
-![image](https://user-images.githubusercontent.com/73197/156897846-3e53a7cc-6879-4b28-beb0-5bd7605e563d.png)
+![to-cold](https://user-images.githubusercontent.com/1653275/164861039-cad33ad7-0786-43c7-b292-148a845f8a47.png)
 
 ### Why does `tocold` make use of another CTV?
 
